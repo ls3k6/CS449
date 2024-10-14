@@ -43,52 +43,6 @@ class Player():
             gameboard.set_tile_symbol(row, col, self.get_option())
             return constant.GOOD_MOVE
 
-
-class Computer(Player):
-    def __init__(self, name, color):
-        super().__init__(name, color)
-        self.type = constant.COMPUTER
-
-    def pick_rand_row_col(self, gameboard):
-        row_rand = random.randrange(0, gameboard.get_board_size())
-        col_rand = random.randrange(0, gameboard.get_board_size())
-        return row_rand, col_rand
-
-    def pick_rand_option(self):
-        option = random.choice(['S', 'O'])
-        self.set_option(option)
-        return option
-
-    def select_row_col(self, gameboard):
-        if gameboard.check_if_full_board():
-            return constant.FULL_BOARD, constant.FULL_BOARD
-        else:
-            options = ['S', 'O']
-            for option in options:
-                self.set_option(option)
-                for row in range(gameboard.board_size):
-                    for col in range(gameboard.board_size):
-                        if gameboard.get_tile_symbol(row, col) != constant.EMPTY:
-                            continue
-                        else:
-                            if option == 'S':
-                                if gameboard.right_move_check(row, col, 'white') or gameboard.left_move_check(row, col, 'white'):
-                                    return row, col
-                            elif option == 'O':
-                                if gameboard.middle_move_check(row, col, 'white'):
-                                    return row, col
-
-            option = self.pick_rand_option()
-            while(gameboard.get_tile_symbol(row, col) != constant.EMPTY):
-                row, col = self.pick_rand_row_col(gameboard)
-
-            return row, col
-
-    def make_move(self, gameboard, row, col):
-        gameboard.set_tile_symbol(row, col, self.get_option())
-        return constant.GOOD_MOVE
-
-
 class SimpleGame():
     def __init__(self):
         self.type = constant.SIMPLE_GAME
