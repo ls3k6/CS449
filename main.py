@@ -131,14 +131,6 @@ class GeneralGame(SimpleGame):
         super().__init__()
         self.type = constant.GENERAL_GAME
 
-    def get_winner(self):
-        if self.red_player.get_sos() > self.blue_player.get_sos():
-            return self.red_player
-        elif self.blue_player.get_sos() > self.red_player.get_sos():
-            return self.blue_player
-        else:
-            return constant.DRAW
-
     def check_game_status(self, gameboard, row, col):
         if row == constant.FULL_BOARD:
             winning_player = self.get_winner()
@@ -165,11 +157,6 @@ class GeneralGame(SimpleGame):
                     self.reset(gameboard, winning_player)
 
         return constant.NULL
-
-    def check_current_player_computer(self, gameboard):
-        if self.current_player.type == constant.COMPUTER:
-                row, col = self.current_player.select_row_col(gameboard)
-                self.check_game_status(gameboard, row, col)
 
 class SosGameBoard():
     def __init__(self, board_size):
@@ -438,8 +425,6 @@ class SosGameGUI():
             return None
         else:
             self.create_GUI_gameboard()
-
-
 
     def create_GUI_gameboard(self):
         self.infoWindow.destroy()
