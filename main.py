@@ -103,12 +103,6 @@ class SimpleGame():
         self.red_wins = 0
         self.blue_wins = 0
 
-
-        
-
-    
-
-
     def set_red_human(self):
         self.red_player_type.set(constant.HUMAN)
         self.red_player = Player("red player", "red")
