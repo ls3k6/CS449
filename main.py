@@ -43,9 +43,50 @@ class Player():
             gameboard.set_tile_symbol(row, col, self.get_option())
             return constant.GOOD_MOVE
 
+    def pick_rand_row_col(self, gameboard):
+        row_rand = random.randrange(0, gameboard.get_board_size())
+        col_rand = random.randrange(0, gameboard.get_board_size())
+        return row_rand, col_rand
+
+    def pick_rand_option(self):
+        option = random.choice(['S', 'O'])
+        self.set_option(option)
+        return option
+
+    def select_row_col(self, gameboard):
+        if gameboard.check_if_full_board():
+            return constant.FULL_BOARD, constant.FULL_BOARD
+        else:
+            options = ['S', 'O']
+            for option in options:
+                self.set_option(option)
+                for row in range(gameboard.board_size):
+                    for col in range(gameboard.board_size):
+                        if gameboard.get_tile_symbol(row, col) != constant.EMPTY:
+                            continue
+                        else:
+                            if option == 'S':
+                                if gameboard.right_move_check(row, col, 'white') or gameboard.left_move_check(row, col, 'white'):
+                                    return row, col
+                            elif option == 'O':
+                                if gameboard.middle_move_check(row, col, 'white'):
+                                    return row, col
+
+            option = self.pick_rand_option()
+            while(gameboard.get_tile_symbol(row, col) != constant.EMPTY):
+                row, col = self.pick_rand_row_col(gameboard)
+
+            return row, col
+
+    def make_move(self, gameboard, row, col):
+        gameboard.set_tile_symbol(row, col, self.get_option())
+        return constant.GOOD_MOVE
+
+
 class SimpleGame():
     def __init__(self):
         self.type = constant.SIMPLE_GAME
+        self.to_record = False
         self.red_player = Player("red player", "red")
         self.blue_player = Player("blue player", "blue")
         self.red_player_type = StringVar()
@@ -57,6 +98,24 @@ class SimpleGame():
         self.red_wins = 0
         self.blue_wins = 0
 
+    def set_to_record(self):
+        if self.to_record:
+            self.to_record = False
+        elif not self.to_record:
+            self.to_record = True
+
+    def add_win(self, winning_player):
+        if winning_player == self.red_player:
+            self.red_wins += 1
+        elif winning_player == self.blue_player:
+            self.blue_wins += 1
+
+    def reset(self, gameboard):
+        gameboard.reset_board()
+        self.red_player.reset_sos()
+        self.blue_player.reset_sos()
+        self.set_red_turn(gameboard)
+
     def set_red_human(self):
         self.red_player_type.set(constant.HUMAN)
         self.red_player = Player("red player", "red")
@@ -65,35 +124,13 @@ class SimpleGame():
         self.blue_player_type.set(constant.HUMAN)
         self.blue_player = Player("blue player", "blue")
 
-    def set_red_computer(self, gameboard):
-        self.red_player_type.set(constant.COMPUTER)
-        if self.current_player.get_name() == self.red_player.get_name():
-            self.red_player = Computer("red player", "red")
-            self.set_red_turn(gameboard)
-        else:
-            self.red_player = Computer("red player", "red")
-
-    def set_blue_computer(self, gameboard):
-        self.blue_player_type.set(constant.COMPUTER)
-        if self.current_player.get_name() == self.blue_player.get_name():
-            self.blue_player = Computer("blue player", "blue")
-            self.set_blue_turn(gameboard)
-        else:
-            self.blue_player = Computer("blue player", "blue")
-
     def set_red_turn(self, gameboard=constant.NULL):
         self.current_turn.set('Current Turn: red player')
         self.current_player = self.red_player
-        if self.current_player.type == constant.COMPUTER:
-            row, col = self.current_player.select_row_col(gameboard)
-            self.check_game_status(gameboard, row, col)
 
     def set_blue_turn(self, gameboard=constant.NULL):
         self.current_turn.set('Current Turn: blue player')
         self.current_player = self.blue_player
-        if self.current_player.type == constant.COMPUTER:
-            row, col = self.current_player.select_row_col(gameboard)
-            self.check_game_status(gameboard, row, col)
 
     def switch_turn(self, gameboard):
         if self.current_player == self.red_player:
@@ -107,37 +144,50 @@ class SimpleGame():
             board_game_status = gameboard.check_game_status(row, col, self.current_player.color)
             if board_game_status == constant.SCORE:
                 winning_player = self.current_player
-                
+                self.show_player_win_message(winning_player)
                 self.add_win(winning_player)
-                self.reset(gameboard, winning_player)
+                self.reset(gameboard)
                 return constant.NULL
 
             if gameboard.check_if_full_board():
                 winning_player = constant.DRAW
-                self.reset(gameboard, winning_player)
+                self.show_draw_message()
+                self.reset(gameboard)
                 return constant.NULL
             else:
                 self.switch_turn(gameboard)
                 return constant.NULL
 
-    def check_both_player_computers(self):
-        if self.red_player.type == constant.COMPUTER and self.blue_player.type == constant.COMPUTER:
-            messagebox.showinfo('Players reset to Human', 'Both players reset to Human')
-            self.set_red_human()
-            self.set_blue_human()
+    def show_player_win_message(self, winning_player):
+        messagebox.showinfo('WINNER', f'{winning_player.get_name()} wins')
+
+    def show_draw_message(self):
+        messagebox.showinfo('DRAW', 'this game is a draw :)')
+
 
 class GeneralGame(SimpleGame):
     def __init__(self):
         super().__init__()
         self.type = constant.GENERAL_GAME
+        
+    def get_winner(self):
+        if self.red_player.get_sos() > self.blue_player.get_sos():
+            return self.red_player
+        elif self.blue_player.get_sos() > self.red_player.get_sos():
+            return self.blue_player
+        else:
+            return constant.DRAW
 
     def check_game_status(self, gameboard, row, col):
         if row == constant.FULL_BOARD:
             winning_player = self.get_winner()
             if winning_player == constant.DRAW:
+                self.show_draw_message()
                 self.reset(gameboard, winning_player)
                 return constant.NULL
             else:
+                self.add_win(winning_player)
+                self.show_player_win_message(winning_player)
                 self.reset(gameboard, winning_player)
                 return constant.NULL
 
@@ -152,11 +202,19 @@ class GeneralGame(SimpleGame):
             if gameboard.check_if_full_board():
                 winning_player = self.get_winner()
                 if winning_player == constant.DRAW:
+                    self.show_draw_message()
                     self.reset(gameboard, winning_player)
                 else:
+                    self.add_win(winning_player)
+                    self.show_player_win_message(winning_player)
                     self.reset(gameboard, winning_player)
 
         return constant.NULL
+
+    def show_player_win_message(self, winning_player):
+        messagebox.showinfo(
+            'WINNER', f'red SOS count: {self.red_player.get_sos()}\nblue SOS count: {self.blue_player.get_sos()}\n\n{winning_player.get_name()} wins')
+
 
 class SosGameBoard():
     def __init__(self, board_size):
@@ -369,7 +427,7 @@ class SosGameGUI():
         self.BOARD_SIZE = constant.EMPTY
         self.START_WINDOW_WIDTH = 300
         self.START_WINDOW_HEIGHT = 300
-        self.WINDOW_TITLE = 'LIA\'S SOS GAME'
+        self.WINDOW_TITLE = 'LIA\'s SOS GAME'
         self.WINDOW.geometry(f"{self.START_WINDOW_WIDTH}x{self.START_WINDOW_HEIGHT}")
         self.WINDOW.title(self.WINDOW_TITLE)
         self.first_start_button = Button(self.WINDOW, height=3, width=10, text='press to start', command=lambda:self.get_game_info())
@@ -407,7 +465,9 @@ class SosGameGUI():
         general_game_button = Radiobutton(self.infoWindow, text='General Game', variable=self.gametype, value=constant.GENERAL_GAME, command=lambda: self.set_general_game())
         general_game_button.pack()
         start_button = Button(self.infoWindow, height=3, width=10, text='start game', command=lambda:self.check_info())
-        start_button.pack()     
+        start_button.pack()
+        replay_button = Button(self.infoWindow, height=3, width=15, text='replay last game', command=lambda:self.replay_game())
+        replay_button.pack()
         simple_game_button.select()
 
     def check_info(self):
@@ -426,6 +486,27 @@ class SosGameGUI():
         else:
             self.create_GUI_gameboard()
 
+    def replay_game(self):
+        try:
+            with open('recorded_games.txt', 'r') as file:
+                recorded_list = file.readlines()
+                last_game = json.loads(recorded_list[-1])
+                self.BOARD_SIZE = last_game['board_size']
+
+                if last_game['gametype'] == constant.SIMPLE_GAME:
+                    self.set_simple_game()
+                    self.gametype.set(constant.SIMPLE_GAME)
+                elif last_game['gametype'] == constant.GENERAL_GAME:
+                    self.set_general_game()
+                    self.gametype.set(constant.GENERAL_GAME)
+
+                self.create_GUI_gameboard()
+
+        except FileNotFoundError:
+            messagebox.showerror(
+                'cannot find recorded games file', 'the recorded games file cannot be found - start a new game instead')
+            return constant.NULL
+
     def create_GUI_gameboard(self):
         self.infoWindow.destroy()
         self.WINDOW.title(self.gametype.get())
@@ -443,11 +524,6 @@ class SosGameGUI():
         # output of current turn label
         current_turn_label = Label(self.WINDOW, textvariable=self.game.current_turn)
         current_turn_label.grid(row=0, column=self.BOARD_SIZE+1)
-
-        # restart game button
-        restart_game_button = Button(
-            self.WINDOW, text='Restart Game', command=lambda: self.game.reset(self.gameboard, constant.NULL))
-        restart_game_button.grid(row=4, column=self.BOARD_SIZE+3)
 
         # player label frames
         red_label_frame = Frame(self.WINDOW)
@@ -492,6 +568,13 @@ class SosGameGUI():
 
         blue_S_button.pack(side="top")
         blue_O_button.pack(side="top")
+
+        red_human_button.select()
+        blue_human_button.select()
+
+        red_S_button.select()
+        blue_S_button.select()
+
 
 if __name__ == '__main__':
     gameGUI = SosGameGUI()
