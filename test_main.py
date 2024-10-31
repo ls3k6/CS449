@@ -28,5 +28,37 @@ class TestSosGameGUI(unittest.TestCase):
         self.gameGUI.game.set_blue_human()
         return self.assertEqual(self.gameGUI.game.blue_player.type, constant.HUMAN)
 
+    def test_blue_make_move(self):
+        self.gameGUI.set_simple_game()
+        self.gameGUI.game.set_blue_turn()
+        self.gameGUI.game.blue_player.set_option('S')
+        self.gameGUI.game.check_game_status(self.gameGUI.gameboard, 2, 2)
+        return self.assertEqual(self.gameGUI.gameboard.get_tile_symbol(2, 2), self.gameGUI.game.blue_player.get_option())
+
+    def test_simple_game_over(self):
+        self.gameGUI.set_simple_game()
+        self.gameGUI.game.set_red_turn()
+        self.gameGUI.game.red_player.set_option('S')
+        self.gameGUI.gameboard.set_tile_symbol(0, 1, 'S')
+        self.gameGUI.gameboard.set_tile_symbol(1, 1, 'O')
+        self.gameGUI.game.check_game_status(self.gameGUI.gameboard, 2, 1)
+        return self.assertEqual(self.gameGUI.game.red_wins, 1)
+
+    def test_general_game_over(self):
+        self.gameGUI.set_general_game()
+        self.gameGUI.game.set_red_turn()
+        self.gameGUI.game.red_player.set_option('S')
+        self.gameGUI.gameboard.set_tile_symbol(0, 1, 'S')
+        self.gameGUI.gameboard.set_tile_symbol(1, 1, 'O')
+        self.gameGUI.game.check_game_status(self.gameGUI.gameboard, 2, 1)
+        for row in range(self.gameGUI.gameboard.board_size):
+            for col in range(self.gameGUI.gameboard.board_size):
+                if row != 3 or col != 3:
+                    if self.gameGUI.gameboard.get_tile_symbol(row, col) == constant.EMPTY:
+                        self.gameGUI.gameboard.set_tile_symbol(row, col, 'O')
+        self.gameGUI.game.check_game_status(self.gameGUI.gameboard, 3, 3)
+        return self.assertEqual(self.gameGUI.game.red_wins, 1)
+
+
 if __name__ == '__main__':
     unittest.main()
