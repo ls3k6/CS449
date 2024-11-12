@@ -28,6 +28,32 @@ class TestSosGameGUI(unittest.TestCase):
         self.gameGUI.game.set_blue_human()
         return self.assertEqual(self.gameGUI.game.blue_player.type, constant.HUMAN)
 
+    def test_set_red_computer(self):
+        self.gameGUI.game.set_red_computer(self.gameGUI.gameboard)
+        return self.assertEqual(self.gameGUI.game.red_player.type, constant.COMPUTER)
+
+    def test_set_blue_computer(self):
+        self.gameGUI.game.set_blue_computer(self.gameGUI.gameboard)
+        return self.assertEqual(self.gameGUI.game.blue_player.type, constant.COMPUTER)
+
+    def test_computer_choose_option(self):
+        self.gameGUI.game.set_red_computer(self.gameGUI.gameboard)
+        option = self.gameGUI.game.red_player.choose_option()
+        return self.assertEqual(option, self.gameGUI.game.red_player.get_option())
+
+    def test_computer_make_move(self):
+        self.gameGUI.game.set_red_computer(self.gameGUI.gameboard)
+        row, col = self.gameGUI.game.red_player.select_row_col(self.gameGUI.gameboard)
+        self.gameGUI.game.red_player.make_move(self.gameGUI.gameboard, row, col)
+        return self.assertEqual(self.gameGUI.gameboard.get_tile_symbol(row, col), self.gameGUI.game.red_player.get_option())
+
+    def test_red_make_move(self):
+        self.gameGUI.set_simple_game()
+        self.gameGUI.game.set_red_turn()
+        self.gameGUI.game.red_player.set_option('S')
+        self.gameGUI.game.check_game_status(self.gameGUI.gameboard, 2, 2)
+        return self.assertEqual(self.gameGUI.gameboard.get_tile_symbol(2, 2), self.gameGUI.game.red_player.get_option())
+
     def test_blue_make_move(self):
         self.gameGUI.set_simple_game()
         self.gameGUI.game.set_blue_turn()
@@ -58,7 +84,6 @@ class TestSosGameGUI(unittest.TestCase):
                         self.gameGUI.gameboard.set_tile_symbol(row, col, 'O')
         self.gameGUI.game.check_game_status(self.gameGUI.gameboard, 3, 3)
         return self.assertEqual(self.gameGUI.game.red_wins, 1)
-
 
 if __name__ == '__main__':
     unittest.main()
