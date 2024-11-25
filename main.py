@@ -91,6 +91,7 @@ class Computer(Player):
 class SimpleGame():
     def __init__(self):
         self.type = constant.SIMPLE_GAME
+        self.to_record = False
         self.red_player = Player("red player", "red")
         self.blue_player = Player("blue player", "blue")
         self.red_player_type = StringVar()
@@ -102,11 +103,42 @@ class SimpleGame():
         self.red_wins = 0
         self.blue_wins = 0
 
+    def set_to_record(self):
+        if self.to_record:
+            self.to_record = False
+        elif not self.to_record:
+            self.to_record = True
+
+    def record_game(self, winning_player, gameboard):
+        board_size = gameboard.get_board_size()
+        now = datetime.now()
+        dt_string = now.strftime("%m/%d/%Y %H:%M:%S")
+
+        with open('recorded_games.txt', 'a') as file:
+            if winning_player == constant.DRAW:
+                data_dict = {'date_time': dt_string, 'gametype': constant.SIMPLE_GAME, 'board_size': board_size, 'winning_player': constant.DRAW}
+                file.write(json.dumps(data_dict))
+                file.write('\n')
+            else:
+                winning_player_name = winning_player.get_name()
+                data_dict = {'date_time': dt_string, 'gametype': constant.SIMPLE_GAME, 'board_size': board_size, 'winning_player': winning_player_name}
+                file.write(json.dumps(data_dict))
+                file.write('\n')
+
     def add_win(self, winning_player):
         if winning_player == self.red_player:
             self.red_wins += 1
         elif winning_player == self.blue_player:
             self.blue_wins += 1
+
+    def reset(self, gameboard, winning_player):
+        if self.to_record and winning_player != constant.NULL:
+            self.record_game(winning_player, gameboard)
+        gameboard.reset_board()
+        self.check_both_player_computers()
+        self.red_player.reset_sos()
+        self.blue_player.reset_sos()
+        self.set_red_turn(gameboard)
 
     def set_red_human(self):
         self.red_player_type.set(constant.HUMAN)
@@ -190,6 +222,24 @@ class GeneralGame(SimpleGame):
         super().__init__()
         self.type = constant.GENERAL_GAME
 
+    def record_game(self, winning_player, gameboard):
+        board_size = gameboard.get_board_size()
+        red_sos_count = self.red_player.get_sos()
+        blue_sos_count = self.blue_player.get_sos()
+        now = datetime.now()
+        dt_string = now.strftime("%m/%d/%Y %H:%M:%S")
+
+        with open('recorded_games.txt', 'a') as file:
+            if winning_player == constant.DRAW:
+                data_dict = {'date_time': dt_string, 'gametype': constant.GENERAL_GAME, 'board_size': board_size, 'red_sos_count': red_sos_count, 'blue_sos_count': blue_sos_count, 'winning_player': constant.DRAW}
+                file.write(json.dumps(data_dict))
+                file.write('\n')
+            else:
+                winning_player_name = winning_player.get_name()
+                data_dict = {'date_time': dt_string, 'gametype': constant.GENERAL_GAME, 'board_size': board_size, 'red_sos_count': red_sos_count, 'blue_sos_count': blue_sos_count, 'winning_player': winning_player_name}
+                file.write(json.dumps(data_dict))
+                file.write('\n')
+
     def get_winner(self):
         if self.red_player.get_sos() > self.blue_player.get_sos():
             return self.red_player
@@ -251,7 +301,7 @@ class SosGameBoard():
         for row in range(self.board_size):
             self.board.append([])
             for col in range(self.board_size):
-                self.board[row].append(0) 
+                self.board[row].append(0)
 
     def reset_board(self):
         for r in range(self.board_size):
@@ -451,7 +501,6 @@ class SosGameGUI():
         self.board_size_entry = constant.EMPTY
 
     def start(self):
-
         self.WINDOW.mainloop()
 
     def exit_window(self):
@@ -479,6 +528,8 @@ class SosGameGUI():
         general_game_button.pack()
         start_button = Button(self.infoWindow, height=3, width=10, text='start game', command=lambda:self.check_info())
         start_button.pack()
+        replay_button = Button(self.infoWindow, height=3, width=15, text='replay last game', command=lambda:self.replay_game())
+        replay_button.pack()
         simple_game_button.select()
 
     def check_info(self):
@@ -497,6 +548,27 @@ class SosGameGUI():
         else:
             self.create_GUI_gameboard()
 
+    def replay_game(self):
+        try:
+            with open('recorded_games.txt', 'r') as file:
+                recorded_list = file.readlines()
+                last_game = json.loads(recorded_list[-1])
+                self.BOARD_SIZE = last_game['board_size']
+
+                if last_game['gametype'] == constant.SIMPLE_GAME:
+                    self.set_simple_game()
+                    self.gametype.set(constant.SIMPLE_GAME)
+                elif last_game['gametype'] == constant.GENERAL_GAME:
+                    self.set_general_game()
+                    self.gametype.set(constant.GENERAL_GAME)
+
+                self.create_GUI_gameboard()
+
+        except FileNotFoundError:
+            messagebox.showerror(
+                'cannot find recorded games file', 'the recorded games file cannot be found - start a new game instead')
+            return constant.NULL
+
     def create_GUI_gameboard(self):
         self.infoWindow.destroy()
         self.WINDOW.title(self.gametype.get())
@@ -511,19 +583,22 @@ class SosGameGUI():
                     self.WINDOW, bg="white", text=constant.EMPTY, height=self.BUTTON_HEIGHT, width=self.BUTTON_WIDTH, command=lambda row1=r, col1=c: self.game.check_game_status(self.gameboard, row1, col1))
                 tile.grid(row=r, column=c, padx=2, pady=2)
 
-        # output of current turn label
         current_turn_label = Label(self.WINDOW, textvariable=self.game.current_turn)
         current_turn_label.grid(row=0, column=self.BOARD_SIZE+1)
 
-        # player label frames
+        restart_game_button = Button(
+            self.WINDOW, text='Restart Game', command=lambda: self.game.reset(self.gameboard, constant.NULL))
+        restart_game_button.grid(row=4, column=self.BOARD_SIZE+3)
+
+        to_record_checkbox = Checkbutton(self.WINDOW, text='Record game', variable=self.game.to_record, command=lambda: self.game.set_to_record())
+        to_record_checkbox.grid(row=4, column=self.BOARD_SIZE+1)
+
         red_label_frame = Frame(self.WINDOW)
         blue_label_frame = Frame(self.WINDOW)
 
-        # player labels
         red_label = Label(red_label_frame, text='RED PLAYER')
         blue_label = Label(blue_label_frame, text='BLUE PLAYER')
 
-        # human player radio buttons
         red_human_button = Radiobutton(red_label_frame, text='Human', variable=self.game.red_player_type, value=constant.HUMAN, command=lambda: self.game.set_red_human())
         blue_human_button = Radiobutton(blue_label_frame, text='Human', variable=self.game.blue_player_type, value=constant.HUMAN, command=lambda: self.game.set_blue_human())
 
@@ -535,11 +610,9 @@ class SosGameGUI():
         red_human_button.pack(side="top")
         blue_human_button.pack(side="top")
 
-        # player frames
         red_button_frame = Frame(self.WINDOW)
         blue_button_frame = Frame(self.WINDOW)
 
-        # player S/O radio buttons
         red_S_button = Radiobutton(
             red_button_frame, text='S', variable=self.game.red_player.option, value='S', command=lambda: self.game.red_player.set_option('S'))
         red_O_button = Radiobutton(
@@ -559,11 +632,9 @@ class SosGameGUI():
         blue_S_button.pack(side="top")
         blue_O_button.pack(side="top")
 
-        # computer button frames
         red_computer_frame = Frame(self.WINDOW)
         blue_computer_frame = Frame(self.WINDOW)
 
-        # computer radio buttons
         red_computer_button = Radiobutton(red_computer_frame, text='Computer', variable=self.game.red_player_type, value=constant.COMPUTER, command=lambda: self.game.set_red_computer(self.gameboard))
         blue_computer_button = Radiobutton(blue_computer_frame, text='Computer', variable=self.game.blue_player_type, value=constant.COMPUTER, command=lambda: self.game.set_blue_computer(self.gameboard))
 
@@ -578,7 +649,6 @@ class SosGameGUI():
 
         red_S_button.select()
         blue_S_button.select()
-
 
 if __name__ == '__main__':
     gameGUI = SosGameGUI()
